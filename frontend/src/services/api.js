@@ -65,10 +65,6 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     config.baseURL = getApiBaseUrl();
-    if (!config.headers) {
-      config.headers = {};
-    }
-    config.headers['Accept'] = 'application/json';
     return config;
   },
   (error) => Promise.reject(error)
@@ -87,8 +83,49 @@ apiClient.interceptors.response.use(
 
 // Health & Model Info
 export const checkApiHealth = async () => {
-  const response = await apiClient.get('/');
-  return response.data;
+  const baseUrl = getApiBaseUrl();
+
+  // Strategy 1: apiClient.get('/')
+  try {
+    const res = await apiClient.get('/');
+    if (res?.data && (res.data.status === 'online' || res.data.model_loaded !== undefined || res.data.service)) {
+      return res.data;
+    }
+  } catch (_) {}
+
+  // Strategy 2: apiClient.get('/health')
+  try {
+    const res = await apiClient.get('/health');
+    if (res?.data && (res.data.status === 'online' || res.data.model_loaded !== undefined || res.data.service)) {
+      return res.data;
+    }
+  } catch (_) {}
+
+  // Strategy 3: native fetch('/')
+  try {
+    const fetchRes = await fetch(`${baseUrl}/`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (fetchRes.ok) {
+      const data = await fetchRes.json();
+      return data;
+    }
+  } catch (_) {}
+
+  // Strategy 4: native fetch('/health')
+  try {
+    const fetchRes = await fetch(`${baseUrl}/health`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (fetchRes.ok) {
+      const data = await fetchRes.json();
+      return data;
+    }
+  } catch (_) {}
+
+  throw new Error(`Health check unreachable at ${baseUrl}`);
 };
 
 export const getModelInfo = async () => {
@@ -99,18 +136,23 @@ export const getModelInfo = async () => {
 export const checkModelStatus = async () => {
   try {
     const health = await checkApiHealth();
-    if (health && (health.status === 'online' || health.model_loaded !== undefined)) {
+    if (health) {
       return {
         model_loaded: Boolean(health.model_loaded),
         status: health.status || 'online',
         service: health.service,
       };
     }
-  } catch (_) {
-    // Fallback to /api/prediction/status
-  }
-  const response = await apiClient.get('/api/prediction/status');
-  return response.data;
+  } catch (_) {}
+
+  try {
+    const response = await apiClient.get('/api/prediction/status');
+    return response.data;
+  } catch (_) {}
+
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/prediction/status`);
+  return await res.json();
 };
 
 // Simulation & Predictions

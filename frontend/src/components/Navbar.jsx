@@ -15,7 +15,7 @@ export default function Navbar() {
       try {
         const res = await checkApiHealth();
         if (isMounted) {
-          const isOnline = res?.status === 'online' || res?.model_loaded === true;
+          const isOnline = Boolean(res && (res.status === 'online' || res.model_loaded !== undefined || res.service));
           setModelReady(isOnline);
         }
       } catch (err) {
@@ -27,8 +27,8 @@ export default function Navbar() {
         } catch (_) {
           if (isMounted) {
             setModelReady(false);
-            // Auto-retry in 6 seconds (ideal for Render free-tier cold-start wakeups)
-            retryTimer = setTimeout(verifyStatus, 6000);
+            // Auto-retry in 5 seconds (ideal for Render free-tier cold-start wakeups)
+            retryTimer = setTimeout(verifyStatus, 5000);
           }
         }
       }

@@ -40,20 +40,25 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://ai-based-projectile-predicti.vercel.app",
+    "https://ai-based-projectile-motion-pr-git-d66713-gunapatipradeep8-cyber.vercel.app",
+    "https://ai-based-projectile-motion-prediction-799cfunnx.vercel.app",
     "https://ai-based-projectile-motion-prediction.vercel.app",
 ]
 
-# Allow custom frontend domain(s) if provided in environment variables
-env_origins = os.environ.get("ALLOWED_ORIGINS", "") + "," + os.environ.get("FRONTEND_URL", "")
-for url in env_origins.split(","):
-    trimmed = url.strip().rstrip("/")
-    if trimmed and trimmed not in origins:
-        origins.append(trimmed)
+# Allow custom frontend domain(s) if provided in environment variables (comma or semicolon separated)
+for env_key in ("ALLOWED_ORIGINS", "FRONTEND_URL"):
+    raw_env = os.environ.get(env_key, "").strip()
+    if raw_env:
+        for item in raw_env.replace(";", ",").split(","):
+            cleaned = item.strip().strip("'\"").rstrip("/")
+            if cleaned and cleaned not in origins:
+                origins.append(cleaned)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app|https?://localhost.*|https?://127\.0\.0\.1.*|https?://.*",
+    allow_origin_regex=r"^https://.*\.vercel\.app$|^https?://localhost(:\d+)?$|^https?://127\.0\.0\.1(:\d+)?$|https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,6 +72,8 @@ app.include_router(chatbot.router, prefix="/api/assistant", tags=["AI Assistant 
 
 
 @app.get("/", tags=["Health"])
+@app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 def health_check():
     return {
         "status": "online",
