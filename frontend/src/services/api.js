@@ -14,8 +14,8 @@ export const getApiBaseUrl = () => {
       return `http://${hostname}:8000`;
     }
     // Deployed production environment without VITE_API_URL:
-    // Return empty string (relative path) so requests hit the deployed origin, NEVER visitor's localhost!
-    return '';
+    // Default to the Render backend URL so requests hit the backend, NEVER visitor's localhost or Vercel 404!
+    return 'https://ai-based-projectile-motion-prediction.onrender.com';
   }
 
   return 'http://127.0.0.1:8000';
@@ -28,7 +28,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // Health & Model Info
@@ -166,7 +166,11 @@ export const formatChatErrorMessage = (err) => {
 
   if (msg.includes('Network Error') || err?.code === 'ERR_NETWORK' || msg.includes('Failed to fetch')) {
     const currentUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
-    return `### 🔌 Backend Server Offline\n\nUnable to connect to the FastAPI backend at \`${currentUrl}\`.\n\n**To start the backend server:**\n\`\`\`powershell\ncd backend\n.\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload\n\`\`\``;
+    const isLocal = currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1');
+    if (isLocal) {
+      return `### 🔌 Backend Server Offline\n\nUnable to connect to the FastAPI backend at \`${currentUrl}\`.\n\n**To start the backend server:**\n\`\`\`powershell\ncd backend\n.\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload\n\`\`\``;
+    }
+    return `### 🔌 Backend Server Connecting / Waking Up\n\nUnable to reach the backend at \`${currentUrl}\`.\n\nRender free-tier instances sleep after inactivity and take about 30–60 seconds to spin up. Please wait a moment and try again.`;
   }
 
   return `### ⚠️ Connection Error\n\n${detail || msg || 'An unexpected error occurred while communicating with the AI Tutor.'}`;

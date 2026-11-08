@@ -42,10 +42,18 @@ origins = [
     "http://127.0.0.1:3000",
 ]
 
+# Allow custom frontend domain(s) if provided in environment variables
+custom_frontend = os.environ.get("FRONTEND_URL", "").strip()
+if custom_frontend:
+    for url in custom_frontend.split(","):
+        trimmed = url.strip().rstrip("/")
+        if trimmed and trimmed not in origins:
+            origins.append(trimmed)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"https://.*\.vercel\.app|https?://localhost.*|https?://127\.0\.0\.1.*|https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,3 +79,10 @@ def health_check():
             "docs": "/docs",
         },
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
+

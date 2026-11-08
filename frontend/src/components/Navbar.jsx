@@ -9,15 +9,32 @@ export default function Navbar() {
 
   useEffect(() => {
     let isMounted = true;
-    checkModelStatus()
-      .then((res) => {
-        if (isMounted) setModelReady(res.model_loaded);
-      })
-      .catch(() => {
-        if (isMounted) setModelReady(false);
-      });
+    let retryTimer = null;
+
+    const verifyStatus = () => {
+      checkModelStatus()
+        .then((res) => {
+          if (isMounted) {
+            setModelReady(Boolean(res?.model_loaded));
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setModelReady(false);
+            // Auto-retry in 6 seconds (ideal for Render free-tier cold-start wakeups)
+            retryTimer = setTimeout(verifyStatus, 6000);
+          }
+        });
+    };
+
+    verifyStatus();
+    // Periodic health poll every 30 seconds
+    const interval = setInterval(verifyStatus, 30000);
+
     return () => {
       isMounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+      clearInterval(interval);
     };
   }, []);
 
@@ -86,11 +103,15 @@ export default function Navbar() {
                   modelReady === true
                     ? 'bg-emerald-400 animate-pulse'
                     : modelReady === false
-                    ? 'bg-amber-400'
-                    : 'bg-slate-500'
+                    ? 'bg-amber-400 animate-ping'
+                    : 'bg-slate-500 animate-pulse'
                 }`}
               ></span>
-              {modelReady === true ? 'RF Model Active' : modelReady === false ? 'Connecting...' : 'Checking ML...'}
+              {modelReady === true
+                ? 'Backend Active'
+                : modelReady === false
+                ? 'Backend Offline (Retrying...)'
+                : 'Connecting...'}
             </div>
 
             <Link
@@ -137,7 +158,13 @@ export default function Navbar() {
               </NavLink>
             );
           })}
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs font-mono">
+              <span className="text-slate-400">Backend Status:</span>
+              <span className={modelReady === true ? 'text-emerald-400 font-semibold' : modelReady === false ? 'text-amber-400' : 'text-slate-400'}>
+                {modelReady === true ? '● Active' : modelReady === false ? '○ Offline (Retrying...)' : '○ Connecting...'}
+              </span>
+            </div>
             <Link
               to="/simulator"
               onClick={() => setMobileMenuOpen(false)}

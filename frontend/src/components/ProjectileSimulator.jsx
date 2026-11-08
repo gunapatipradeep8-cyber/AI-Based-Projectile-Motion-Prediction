@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
-import { predictDistance } from '../services/api';
+import { predictDistance, API_BASE_URL } from '../services/api';
 import {
   PLANETS,
   PRESETS,
@@ -225,7 +225,7 @@ export default function ProjectileSimulator({
       const detail =
         err.response?.data?.detail ||
         err.message ||
-        'Could not contact the backend. Ensure FastAPI is running on port 8000.';
+        `Could not contact the backend at ${API_BASE_URL || 'the backend URL'}.`;
       setApiError(typeof detail === 'string' ? detail : JSON.stringify(detail));
     } finally {
       setIsSimulating(false);
@@ -582,7 +582,7 @@ export default function ProjectileSimulator({
             <div>
               <strong>Simulation Error:</strong> {apiError}
               <p className="mt-0.5 text-red-300/80 text-[11px]">
-                Verify that the FastAPI backend server is active at <code>http://127.0.0.1:8000</code>.
+                Verify that the FastAPI backend server is active at <code>{API_BASE_URL || 'the backend URL'}</code>.
               </p>
             </div>
           </div>
