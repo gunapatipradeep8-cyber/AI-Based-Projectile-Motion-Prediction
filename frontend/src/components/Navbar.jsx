@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { checkModelStatus } from '../services/api';
+import { checkApiHealth, checkModelStatus } from '../services/api';
 import { Activity, BookOpen, Cpu, Home, Menu, X, Orbit } from 'lucide-react';
 
 export default function Navbar() {
@@ -11,20 +11,27 @@ export default function Navbar() {
     let isMounted = true;
     let retryTimer = null;
 
-    const verifyStatus = () => {
-      checkModelStatus()
-        .then((res) => {
+    const verifyStatus = async () => {
+      try {
+        const res = await checkApiHealth();
+        if (isMounted) {
+          const isOnline = res?.status === 'online' || res?.model_loaded === true;
+          setModelReady(isOnline);
+        }
+      } catch (err) {
+        try {
+          const fallback = await checkModelStatus();
           if (isMounted) {
-            setModelReady(Boolean(res?.model_loaded));
+            setModelReady(Boolean(fallback?.model_loaded));
           }
-        })
-        .catch(() => {
+        } catch (_) {
           if (isMounted) {
             setModelReady(false);
             // Auto-retry in 6 seconds (ideal for Render free-tier cold-start wakeups)
             retryTimer = setTimeout(verifyStatus, 6000);
           }
-        });
+        }
+      }
     };
 
     verifyStatus();

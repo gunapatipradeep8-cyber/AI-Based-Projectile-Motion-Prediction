@@ -40,15 +40,15 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://ai-based-projectile-motion-prediction.vercel.app",
 ]
 
 # Allow custom frontend domain(s) if provided in environment variables
-custom_frontend = os.environ.get("FRONTEND_URL", "").strip()
-if custom_frontend:
-    for url in custom_frontend.split(","):
-        trimmed = url.strip().rstrip("/")
-        if trimmed and trimmed not in origins:
-            origins.append(trimmed)
+env_origins = os.environ.get("ALLOWED_ORIGINS", "") + "," + os.environ.get("FRONTEND_URL", "")
+for url in env_origins.split(","):
+    trimmed = url.strip().rstrip("/")
+    if trimmed and trimmed not in origins:
+        origins.append(trimmed)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +57,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Route Mounts

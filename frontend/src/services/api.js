@@ -1,24 +1,53 @@
 import axios from 'axios';
 
 export const getApiBaseUrl = () => {
-  // 1. Explicit environment variable takes precedence (for deployed environments)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+  const isBrowser = typeof window !== 'undefined';
+  const hostname = isBrowser ? window.location.hostname : '';
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+  // Read and sanitize VITE_API_URL
+  let envUrl = import.meta.env.VITE_API_URL;
+  if (typeof envUrl === 'string') {
+    envUrl = envUrl.trim().replace(/^['"]|['"]$/g, '').replace(/\/+$/, '');
+  } else {
+    envUrl = '';
   }
 
-  // 2. In browser environment
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    // Local development: match the browser's hostname (localhost or 127.0.0.1) on port 8000
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `http://${hostname}:8000`;
+  // 1. Local development in browser
+  if (isLocalHost) {
+    if (envUrl) return envUrl;
+    return `http://${hostname}:8000`;
+  }
+
+  // 2. Production deployed environment (e.g., on Vercel)
+  if (isBrowser && !isLocalHost) {
+    // If VITE_API_URL was accidentally configured as localhost or empty in Vercel settings,
+    // NEVER allow localhost in production! Enforce the live Render HTTPS backend.
+    const isInvalidOrLocal =
+      !envUrl ||
+      envUrl.includes('localhost') ||
+      envUrl.includes('127.0.0.1') ||
+      envUrl.includes('0.0.0.0');
+
+    if (isInvalidOrLocal) {
+      return 'https://ai-based-projectile-motion-prediction.onrender.com';
     }
-    // Deployed production environment without VITE_API_URL:
-    // Default to the Render backend URL so requests hit the backend, NEVER visitor's localhost or Vercel 404!
-    return 'https://ai-based-projectile-motion-prediction.onrender.com';
+
+    // Always ensure HTTPS in production to prevent browser Mixed-Content blocks
+    if (envUrl.startsWith('http://')) {
+      return 'https://' + envUrl.slice(7);
+    }
+    if (!envUrl.startsWith('https://')) {
+      return 'https://' + envUrl;
+    }
+    return envUrl;
   }
 
-  return 'http://127.0.0.1:8000';
+  // 3. Fallback for SSR / non-browser context
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  return 'https://ai-based-projectile-motion-prediction.onrender.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -27,9 +56,34 @@ export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
   timeout: 60000,
 });
+
+// Request Interceptor: dynamically guarantee correct baseURL at call-time
+apiClient.interceptors.request.use(
+  (config) => {
+    config.baseURL = getApiBaseUrl();
+    if (!config.headers) {
+      config.headers = {};
+    }
+    config.headers['Accept'] = 'application/json';
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: clean error diagnostics
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!error.response && error.message) {
+      console.warn(`[API Client] Connection or network notice (${getApiBaseUrl()}):`, error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Health & Model Info
 export const checkApiHealth = async () => {
@@ -43,6 +97,18 @@ export const getModelInfo = async () => {
 };
 
 export const checkModelStatus = async () => {
+  try {
+    const health = await checkApiHealth();
+    if (health && (health.status === 'online' || health.model_loaded !== undefined)) {
+      return {
+        model_loaded: Boolean(health.model_loaded),
+        status: health.status || 'online',
+        service: health.service,
+      };
+    }
+  } catch (_) {
+    // Fallback to /api/prediction/status
+  }
   const response = await apiClient.get('/api/prediction/status');
   return response.data;
 };
@@ -165,7 +231,7 @@ export const formatChatErrorMessage = (err) => {
   }
 
   if (msg.includes('Network Error') || err?.code === 'ERR_NETWORK' || msg.includes('Failed to fetch')) {
-    const currentUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000');
+    const currentUrl = getApiBaseUrl();
     const isLocal = currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1');
     if (isLocal) {
       return `### 🔌 Backend Server Offline\n\nUnable to connect to the FastAPI backend at \`${currentUrl}\`.\n\n**To start the backend server:**\n\`\`\`powershell\ncd backend\n.\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload\n\`\`\``;
@@ -186,7 +252,7 @@ export const streamChatMessage = async ({
   onError,
   signal,
 }) => {
-  const endpoint = `${API_BASE_URL}/api/assistant/chat`;
+  const endpoint = `${getApiBaseUrl()}/api/assistant/chat`;
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
