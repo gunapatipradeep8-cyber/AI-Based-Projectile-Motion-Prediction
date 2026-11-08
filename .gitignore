@@ -1,0 +1,108 @@
+# ==============================================================================
+# Git Ignore Rules: AI-Based Projectile Motion Prediction
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Environment Variables & Sensitive Credentials (NEVER COMMIT)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+*.env
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+.env.local
+.env.production
+.env.development
+
+# Always preserve safe .env.example files with placeholders
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ------------------------------------------------------------------------------
+# Python & Virtual Environments
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# ------------------------------------------------------------------------------
+# Node.js & Frontend Build Outputs
+# ------------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+.eslintcache
+
+# ------------------------------------------------------------------------------
+# Databases & SQLite Runtime Files
+# ------------------------------------------------------------------------------
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db-*
+
+# ------------------------------------------------------------------------------
+# Logs & Diagnostic Dumps
+# ------------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------------------------------------------
+# IDE, Editor & OS Artifacts
+# ------------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------------------------
+# Temporary Files, Scratch Notes & Unverified Files
+# ------------------------------------------------------------------------------
+11111111.txt
+gitignore.txt
+*.tmp
+*.bak
+*.backup
+
+# ------------------------------------------------------------------------------
+# Redundant Local Nested Directory (if present)
+# ------------------------------------------------------------------------------
+AI-Based-Projectile-Motion-Prediction/
